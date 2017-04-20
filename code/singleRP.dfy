@@ -38,16 +38,6 @@ function splitDomain(rp:RP, remLife:frac, minTermPayout:nat) : int
     + (minTermPayout as int)
 }
 
-lemma splitBounds()
-  ensures forall rp:RP, remLife:frac, minTermPayout:nat
-            :: TermPayoutConstraint(minTermPayout, rp)
-               ==> (minTermPayout as int)
-                   <= splitDomain(rp, remLife, minTermPayout)
-                   <= (rp.termPayout as int);
-{
-  // Nothing to do here.
-}
-
 function DomainPayout(g:OneShotGame, rp:RP, remLife:frac,
                       minTermPayout:nat): int
 {
@@ -93,40 +83,54 @@ predicate TermPayoutConstraint(minTermPayout:nat, rp:RP)
 
 predicate RPPriceConstraint(minTermPayout:nat, rp:RP)
 {
-  rp.termPayout < rp.price < rp.affDomPayout + minTermPayout
+  0 < rp.termPayout < rp.price < rp.affDomPayout + minTermPayout
 }
 
-predicate CADomCollusionResistance(g1:OneShotGame, g2:OneShotGame, rp:RP,
-                                   remLife:frac, minTermPayout:nat)
+/*predicate CADomCollusionResistance(g1:OneShotGame, g2:OneShotGame, rp:RP,*/
+                                   /*remLife:frac, minTermPayout:nat)*/
+/*{*/
+  /*CAPayout(g1, rp, remLife, minTermPayout) + DomainPayout(g1, rp, remLife,*/
+                                                          /*minTermPayout)*/
+    /*<= CAPayout(g2, rp, remLife, minTermPayout) + DomainPayout(g2, rp, remLife,*/
+                                                               /*minTermPayout)*/
+/*}*/
+
+lemma splitBounds()
+  ensures forall rp:RP, remLife:frac, minTermPayout:nat
+                 | TermPayoutConstraint(minTermPayout, rp)
+                 :: (minTermPayout as int)
+                    <= splitDomain(rp, remLife, minTermPayout)
+                    <= (rp.termPayout as int);
 {
-  CAPayout(g1, rp, remLife, minTermPayout) + DomainPayout(g1, rp, remLife,
-                                                          minTermPayout)
-    <= CAPayout(g2, rp, remLife, minTermPayout) + DomainPayout(g2, rp, remLife,
-                                                               minTermPayout)
+  // Nothing to do here.
 }
 
-/*lemma CADeployment()*/
-/*{*/
-/*}*/
-
-/*lemma CAIncentives()*/
-/*{*/
-/*}*/
+lemma CAIncentive()
+  ensures forall g1:OneShotGame, g2:OneShotGame, rp:RP, remLife:frac,
+                 minTermPayout:nat
+                 | TermPayoutConstraint(minTermPayout, rp)
+                   && RPPriceConstraint(minTermPayout, rp)
+                   && g1.reg == g2.reg
+                   && g1.iss.IssueGoodCert? && g2.iss.IssueBadCert?
+                 :: CAPayout(g1, rp, remLife, minTermPayout)
+                    >= CAPayout(g2, rp, remLife, minTermPayout);
+{
+  // Nothing to do here.
+}
 
 /**
  * Prove the incentivization of reporting a bad certificate.
  */
 lemma ReportingIncentive()
   ensures forall g1:OneShotGame, g2:OneShotGame, rp:RP, rf:nat
-            :: ReportingConstraint(rf, rp)
-               && g1.reg.Register? && g2.reg.Register?
-               && g1.iss.IssueBadCert? && g2.iss.IssueBadCert?
-               && g1.det.Report? && g2.det.NoReport?
-            ==> DetectorPayout(g1, rp, rf) > DetectorPayout(g2, rp, rf);
+            | ReportingConstraint(rf, rp)
+              && g1.reg.Register? && g2.reg.Register?
+              && g1.iss.IssueBadCert? && g2.iss.IssueBadCert?
+              && g1.det.Report? && g2.det.NoReport?
+            :: DetectorPayout(g1, rp, rf) > DetectorPayout(g2, rp, rf);
 {
   // Nothing to do here.
 }
-
 
 /**
  * Prove punishment of a domain that spuriously reports a certificate as
@@ -134,10 +138,10 @@ lemma ReportingIncentive()
  */
 lemma NoSpuriousReports()
   ensures forall g1:OneShotGame, g2:OneShotGame, rp:RP, rf:nat
-            :: ReportingConstraint(rf, rp)
-               && g1.iss.IssueGoodCert? && g2.iss.IssueGoodCert?
-               && g1.det.Report? && g2.det.NoReport?
-              ==> DetectorPayout(g1, rp, rf) < DetectorPayout(g2, rp, rf);
+            | ReportingConstraint(rf, rp)
+              && g1.iss.IssueGoodCert? && g2.iss.IssueGoodCert?
+              && g1.det.Report? && g2.det.NoReport?
+            :: DetectorPayout(g1, rp, rf) < DetectorPayout(g2, rp, rf);
 {
   // Nothing to do here.
 }
@@ -168,32 +172,12 @@ lemma NoCollusionProfits()
   splitBounds();
 }
 
-/*
-lemma DomainIncentive()
-  ensures forall g1:OneShotGame, g2:OneShotGame, rp:RP, remLife:frac,
-                 minTermPayout:nat
-                   :: TermPayoutConstraint(minTermPayout, rp)
-                      && RPPriceConstraint(minTermPayout, rp)
-                      && g1.iss.IssueBadCert? && g1.det.Report?
-                      && g2.iss.IssueBadCert? && g2.det.NoReport?
-                      ==> DomainPayout(g1, rp, remLife, minTermPayout)
-                          >= DomainPayout(g2, rp, remLife, minTermPayout);
+lemma DomainCompensation()
+  ensures forall g:OneShotGame, rp:RP, remLife:frac, minTermPayout:nat
+                 | TermPayoutConstraint(minTermPayout, rp)
+                   && RPPriceConstraint(minTermPayout, rp)
+                   && g == Decisions(Register, IssueBadCert, Report)
+                 :: DomainPayout(g, rp, remLife, minTermPayout) >= 0;
 {
   // Nothing to do here.
 }
-*/
-
-/*
-lemma CAIncentive()
-  ensures forall g1:OneShotGame, g2:OneShotGame, rp:RP, remLife:frac,
-                 minTermPayout:nat
-                   :: TermPayoutConstraint(minTermPayout, rp)
-                      && RPPriceConstraint(minTermPayout, rp)
-                      && g1.iss.IssueGoodCert? && g2.iss.IssueBadCert?
-                      ==> CAPayout(g1, rp, remLife, minTermPayout)
-                          >= CAPayout(g2, rp, remLife, minTermPayout);
-{
-  // Nothing to do here.
-}
-*/
-
